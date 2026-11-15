@@ -1,0 +1,355 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated Google user profile and monthly budget preferences stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Authentication user UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified Google account email address.",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Google account display name.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Google account avatar URL.",
+          "maxLength": 1000
+        },
+        "monthlyLimit": {
+          "type": "number",
+          "description": "Monthly spending budget limit in IDR."
+        },
+        "dailyLimit": {
+          "type": "number",
+          "description": "Optional daily spending budget limit in IDR (0 disables daily limit alerts)."
+        },
+        "alertsEnabled": {
+          "type": "boolean",
+          "description": "Whether budget warning indicators are enabled."
+        },
+        "appLockEnabled": {
+          "type": "boolean",
+          "description": "Whether PIN or Password lock is active when entering the app."
+        },
+        "appLockType": {
+          "type": "string",
+          "description": "Lock credential type.",
+          "enum": ["pin", "password"]
+        },
+        "appLockHash": {
+          "type": "string",
+          "description": "SHA-256 salted hash of the PIN or password.",
+          "maxLength": 128
+        },
+        "appLockSalt": {
+          "type": "string",
+          "description": "Random hex salt used when hashing the PIN or password.",
+          "maxLength": 64
+        },
+        "biometricEnabled": {
+          "type": "boolean",
+          "description": "Whether fingerprint/biometric unlock is enabled."
+        },
+        "themePreference": {
+          "type": "string",
+          "description": "Preferred UI color theme mode.",
+          "enum": ["light", "dark", "system"]
+        },
+        "onboardingCompleted": {
+          "type": "boolean",
+          "description": "Whether the user has completed or dismissed the interactive onboarding tour."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when user profile was first created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile or budget was last updated."
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of most recent Google sign-in."
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "displayName",
+        "monthlyLimit",
+        "alertsEnabled",
+        "createdAt",
+        "updatedAt",
+        "lastLoginAt"
+      ]
+    },
+    "Account": {
+      "title": "Account",
+      "description": "A user's financial wallet, bank account, or e-wallet.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique account identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the user who owns this account.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the wallet or bank account.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "type": {
+          "type": "string",
+          "description": "Account type.",
+          "enum": ["cash", "bank", "ewallet"]
+        },
+        "initialBalance": {
+          "type": "number",
+          "description": "Starting balance in IDR."
+        },
+        "color": {
+          "type": "string",
+          "description": "Hex color code for the account.",
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "type",
+        "initialBalance",
+        "color",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "An income, expense, or internal transfer record belonging to a user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique transaction identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the user who owns this transaction.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "type": {
+          "type": "string",
+          "description": "Transaction type.",
+          "enum": ["expense", "income", "transfer"]
+        },
+        "amount": {
+          "type": "number",
+          "description": "Positive transaction amount in IDR."
+        },
+        "category": {
+          "type": "string",
+          "description": "Transaction category name.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "date": {
+          "type": "string",
+          "description": "Transaction date in YYYY-MM-DD format.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "time": {
+          "type": "string",
+          "description": "Transaction time in HH:mm format.",
+          "minLength": 5,
+          "maxLength": 5,
+          "pattern": "^\\d{2}:\\d{2}$"
+        },
+        "accountId": {
+          "type": "string",
+          "description": "Source account ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "toAccountId": {
+          "type": "string",
+          "description": "Destination account ID for transfer transactions.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "adminFee": {
+          "type": "number",
+          "description": "Optional transfer administration fee in IDR deducted from source account."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional transaction note or memo.",
+          "maxLength": 300
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when transaction was recorded."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when transaction was last modified."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "type",
+        "amount",
+        "category",
+        "date",
+        "time",
+        "accountId",
+        "note",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SavingsGoal": {
+      "title": "SavingsGoal",
+      "description": "A user's savings goal per category with target amount, current saved amount, and optional deadline.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique savings goal identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the user who owns this savings goal.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Savings goal title.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "category": {
+          "type": "string",
+          "description": "Savings category name.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "targetAmount": {
+          "type": "number",
+          "description": "Target savings amount in IDR."
+        },
+        "currentAmount": {
+          "type": "number",
+          "description": "Current accumulated savings amount in IDR."
+        },
+        "deadline": {
+          "type": "string",
+          "description": "Optional target date in YYYY-MM-DD format or empty string.",
+          "maxLength": 10
+        },
+        "color": {
+          "type": "string",
+          "description": "Hex color code for progress bar display.",
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when goal was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when goal was last updated."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "category",
+        "targetAmount",
+        "currentAmount",
+        "deadline",
+        "color",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores each authenticated Google user's profile and monthly budget settings."
+    },
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/Account" },
+      "description": "Stores the wallets, bank accounts, and e-wallets owned by the user."
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Stores the financial transactions owned by the user."
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": { "$ref": "#/entities/SavingsGoal" },
+      "description": "Stores the user's savings goals per category."
+    }
+  }
+}

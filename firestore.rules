@@ -1,0 +1,422 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable hardened global helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn()
+        && request.auth.uid == userId
+        && request.auth.token.email_verified == true;
+    }
+
+    // Validation Blueprint: UserProfile
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid',
+          'email',
+          'displayName',
+          'monthlyLimit',
+          'alertsEnabled',
+          'createdAt',
+          'updatedAt',
+          'lastLoginAt'
+        ])
+        && data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'photoURL',
+          'monthlyLimit',
+          'dailyLimit',
+          'alertsEnabled',
+          'appLockEnabled',
+          'appLockType',
+          'appLockHash',
+          'appLockSalt',
+          'biometricEnabled',
+          'themePreference',
+          'onboardingCompleted',
+          'createdAt',
+          'updatedAt',
+          'lastLoginAt'
+        ])
+        && data.uid is string
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.uid.size() >= 1
+        && data.uid.size() <= 128
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 254
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 100
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && data.monthlyLimit is number
+        && data.monthlyLimit >= 0
+        && data.monthlyLimit <= 100000000000
+        && (!('dailyLimit' in data) || (data.dailyLimit is number && data.dailyLimit >= 0 && data.dailyLimit <= 100000000000))
+        && data.alertsEnabled is bool
+        && (!('appLockEnabled' in data) || data.appLockEnabled is bool)
+        && (!('appLockType' in data) || data.appLockType in ['pin', 'password'])
+        && (!('appLockHash' in data) || (data.appLockHash is string && data.appLockHash.size() <= 128))
+        && (!('appLockSalt' in data) || (data.appLockSalt is string && data.appLockSalt.size() <= 64))
+        && (!('biometricEnabled' in data) || data.biometricEnabled is bool)
+        && (!('themePreference' in data) || data.themePreference in ['light', 'dark', 'system'])
+        && (!('onboardingCompleted' in data) || data.onboardingCompleted is bool)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.lastLoginAt is timestamp;
+    }
+
+    // Validation Blueprint: Account
+    function isValidAccount(data, userId, accountId) {
+      return data.keys().hasAll([
+          'id',
+          'ownerId',
+          'name',
+          'type',
+          'initialBalance',
+          'color',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'ownerId',
+          'name',
+          'type',
+          'initialBalance',
+          'color',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.id is string
+        && data.id == accountId
+        && isValidId(data.id)
+        && data.ownerId is string
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 60
+        && data.type in ['cash', 'bank', 'ewallet']
+        && data.initialBalance is number
+        && data.initialBalance >= -100000000000
+        && data.initialBalance <= 100000000000
+        && data.color is string
+        && data.color.size() >= 4
+        && data.color.size() <= 20
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Transaction
+    function isValidTransaction(data, userId, transactionId) {
+      return data.keys().hasAll([
+          'id',
+          'ownerId',
+          'type',
+          'amount',
+          'category',
+          'date',
+          'time',
+          'accountId',
+          'note',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'ownerId',
+          'type',
+          'amount',
+          'category',
+          'date',
+          'time',
+          'accountId',
+          'toAccountId',
+          'adminFee',
+          'note',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.id is string
+        && data.id == transactionId
+        && isValidId(data.id)
+        && data.ownerId is string
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.type in ['expense', 'income', 'transfer']
+        && data.amount is number
+        && data.amount > 0
+        && data.amount <= 100000000000
+        && data.category is string
+        && data.category.size() >= 1
+        && data.category.size() <= 60
+        && data.date is string
+        && data.date.size() == 10
+        && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.time is string
+        && data.time.size() == 5
+        && data.time.matches('^\\d{2}:\\d{2}$')
+        && data.accountId is string
+        && isValidId(data.accountId)
+        && (!('toAccountId' in data) || (data.toAccountId is string && isValidId(data.toAccountId)))
+        && (!('adminFee' in data) || (data.adminFee is number && data.adminFee >= 0 && data.adminFee <= 1000000000))
+        && data.note is string
+        && data.note.size() <= 300
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: SavingsGoal
+    function isValidSavingsGoal(data, userId, goalId) {
+      return data.keys().hasAll([
+          'id',
+          'ownerId',
+          'name',
+          'category',
+          'targetAmount',
+          'currentAmount',
+          'deadline',
+          'color',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'ownerId',
+          'name',
+          'category',
+          'targetAmount',
+          'currentAmount',
+          'deadline',
+          'color',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.id is string
+        && data.id == goalId
+        && isValidId(data.id)
+        && data.ownerId is string
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 80
+        && data.category is string
+        && data.category.size() >= 1
+        && data.category.size() <= 60
+        && data.targetAmount is number
+        && data.targetAmount > 0
+        && data.targetAmount <= 100000000000
+        && data.currentAmount is number
+        && data.currentAmount >= 0
+        && data.currentAmount <= 100000000000
+        && data.deadline is string
+        && (data.deadline == '' || data.deadline.matches('^\\d{4}-\\d{2}-\\d{2}$'))
+        && data.color is string
+        && data.color.size() >= 4
+        && data.color.size() <= 20
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // User profile & budget settings (PII strictly isolated to owner)
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && incoming().lastLoginAt == request.time;
+
+      allow update: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Google Sign-In profile sync
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'email',
+              'displayName',
+              'photoURL',
+              'lastLoginAt',
+              'updatedAt'
+            ])
+            && incoming().lastLoginAt == request.time
+          ) ||
+          // Action: Update monthly & daily budget settings
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'monthlyLimit',
+              'dailyLimit',
+              'alertsEnabled',
+              'updatedAt'
+            ])
+          ) ||
+          // Action: Update app lock (PIN / password / biometric preference)
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'appLockEnabled',
+              'appLockType',
+              'appLockHash',
+              'appLockSalt',
+              'biometricEnabled',
+              'updatedAt'
+            ])
+          ) ||
+          // Action: Update theme & onboarding tour preferences
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'themePreference',
+              'onboardingCompleted',
+              'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if false;
+
+      // User's financial accounts (wallets, bank accounts, e-wallets)
+      match /accounts/{accountId} {
+        allow get: if isOwner(userId) && isValidId(accountId);
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+
+        allow create: if isOwner(userId)
+          && isValidId(accountId)
+          && isValidAccount(incoming(), userId, accountId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (
+            exists(/databases/$(database)/documents/users/$(userId)) ||
+            existsAfter(/databases/$(database)/documents/users/$(userId))
+          );
+
+        allow update: if isOwner(userId)
+          && isValidId(accountId)
+          && isValidAccount(incoming(), userId, accountId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name',
+            'type',
+            'initialBalance',
+            'color',
+            'updatedAt'
+          ]);
+
+        allow delete: if isOwner(userId) && isValidId(accountId);
+      }
+
+      // User's financial transactions
+      match /transactions/{transactionId} {
+        allow get: if isOwner(userId) && isValidId(transactionId);
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+
+        allow create: if isOwner(userId)
+          && isValidId(transactionId)
+          && isValidTransaction(incoming(), userId, transactionId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (
+            exists(/databases/$(database)/documents/users/$(userId)) ||
+            existsAfter(/databases/$(database)/documents/users/$(userId))
+          );
+
+        allow update: if isOwner(userId)
+          && isValidId(transactionId)
+          && isValidTransaction(incoming(), userId, transactionId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'type',
+            'amount',
+            'category',
+            'date',
+            'time',
+            'accountId',
+            'toAccountId',
+            'adminFee',
+            'note',
+            'updatedAt'
+          ]);
+
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+
+      // User's savings goals per category
+      match /goals/{goalId} {
+        allow get: if isOwner(userId) && isValidId(goalId);
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+
+        allow create: if isOwner(userId)
+          && isValidId(goalId)
+          && isValidSavingsGoal(incoming(), userId, goalId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (
+            exists(/databases/$(database)/documents/users/$(userId)) ||
+            existsAfter(/databases/$(database)/documents/users/$(userId))
+          );
+
+        allow update: if isOwner(userId)
+          && isValidId(goalId)
+          && isValidSavingsGoal(incoming(), userId, goalId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name',
+            'category',
+            'targetAmount',
+            'currentAmount',
+            'deadline',
+            'color',
+            'updatedAt'
+          ]);
+
+        allow delete: if isOwner(userId) && isValidId(goalId);
+      }
+    }
+  }
+}

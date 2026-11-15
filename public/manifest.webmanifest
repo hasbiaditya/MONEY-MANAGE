@@ -1,0 +1,17 @@
+{
+  "name": "Catatan Keuangan",
+  "short_name": "Keuangan",
+  "description": "Aplikasi pencatatan keuangan harian, pantau pemasukan, pengeluaran, dompet, dan anggaran.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f5",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

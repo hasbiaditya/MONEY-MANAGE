@@ -1,0 +1,6 @@
+{
+  "name": "Catatan Keuangan",
+  "description": "Aplikasi pencatatan keuangan harian, pantau pemasukan, pengeluaran, dompet, dan anggaran.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
